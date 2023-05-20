@@ -1,0 +1,687 @@
+#!/bin/sh
+
+export POSIXLY_CORRECT=yes
+#export LC_ALL=C
+export LC_ALL=en_US.UTF-8
+
+#corona
+#Riesenie IOS - projekt_1
+#Datum odovzdania: 31.3.2022
+#Autor: Matej Keznikl
+#Fakulta: Fakulta informačných technológií VUT v Brne (FIT VUT)
+#Popis: Skript pre analýzu záznamov o osobách, u ktorých bola potvrdená nákaza koronavirusom COVID-19
+
+
+    #funkcia help - vypise nápovedu s krátkym popisom každého príkazu a prepínača
+    help()
+    {
+        echo ""
+        echo "NAME"
+        echo "      corona - COVID-19 log analyzer"
+        echo ""
+        echo "SYNOPSIS" 
+        echo "      corona [-h]"
+        echo "      corona [FILTERS] [COMMAND [LOG[LOG2[...]]"
+        echo ""
+        echo "COMMAND:"
+        echo "      infected"
+        echo "              Count the number of infected people"
+        echo ""
+        echo "      merge"
+        echo "              Merge many logs into one,original order will be preserved,"
+        echo "              file header will be on output only once"
+        echo ""
+        echo "      gender"
+        echo "              Print the number of infected people for each gender"
+        echo ""
+        echo "      age"
+        echo "              Print the statistics of infected people - sorted by age"
+        echo ""
+        echo "      daily"
+        echo "              Print the statistics of infected people for each day"
+        echo ""
+        echo "      monthly"
+        echo "               Print the statistics of infected people for each month"
+        echo ""
+        echo "      yearly"
+        echo "               Print the statistics of infected people for each year"
+        echo ""
+        echo "      countries"
+        echo "              Print the statistics of infected people for each country,"
+        echo "              excluding Czech Republic (code cz)"
+        echo ""
+        echo "      districts"
+        echo "              Print the statistics of infected people for each district"
+        echo ""
+        echo "      regions"
+        echo "              Print the statistics of infected people for each region"
+        echo ""
+        echo "FILTERS:"
+        echo "      Can be combination of the following, but each argument can be used only once"
+        echo ""
+        echo "      -a DATETIME"
+        echo "              after - only logs after DATETIME are considered," 
+        echo "              DATETIME format is YYYY-MM-DD"
+        echo ""
+        echo "      -b DATETIME"
+        echo "              before - only logs before DATETIME are considered,"
+        echo "              DATETIME format is YYYY-MM-DD"
+        echo ""
+        echo "      -g GENDER"
+        echo "              gender - only logs of certain gender are considered,"
+        echo "              GENDER is either m (man) or z (woman)"
+        echo ""
+        echo "      -s [WIDTH]"
+        echo "              Print data graphically into histograms. Can be used"
+        echo "              with commands gender, age, daily, monthly, yearly,"
+        echo "              countries, districts and regions. Optional argument WIDTH"
+        echo "              sets the width of the histogram thus sets the length" 
+        echo "              of line to WIDTH,therefore WIDTH the has to be a positive number"
+        echo ""
+        echo ""
+        echo "      -h"
+        echo "              Display this help and exit"
+    }
+
+    #Spočíta pocet nakazenych
+    infected_calc()
+    {
+        echo  "$INPUT" | awk -v infected_number=0 '{infected_number++} END {print infected_number}'
+    }
+
+    #Spojí dohromady viacej súborov
+    merge()
+    {
+        echo "id,datum,vek,pohlavi,kraj_nuts_kod,okres_lau_kod,nakaza_v_zahranici,nakaza_zeme_csu_kod,reportovano_khs"
+        echo "$INPUT"
+    }
+
+    #Spočíta počet nakazených pre dané pohlavia
+    gender_calc()
+    {
+        GENDER=$(echo  "$INPUT" | awk -F "," '{print $4}')
+        GENDER="$(echo "$GENDER" | tr -d ' ')"
+        GENDER=$(echo "$GENDER" | sort)
+        echo "$GENDER" | sort | uniq -c | awk 'BEGIN{
+                gender_none=0
+                }
+                {
+                    if (length($2) != 0)
+                    {
+                        printf ("%s: %s\n",$2, $1)
+                    }
+                    else gender_none++
+                }
+                END{
+                    if(gender_none != 0)
+                    {
+                        printf ("None: %d\n", gender_none)
+                    }   
+            }' 
+    }
+
+    #vypise statistiku poctu nakazenych pre urcity vek
+    age_calc()
+    {
+        echo  "$INPUT" | awk -F "," 'BEGIN{
+
+            count_0_5=0
+            count_6_15=0
+            count_16_25=0
+            count_26_35=0
+            count_36_45=0
+            count_46_55=0
+            count_56_65=0
+            count_66_75=0
+            count_76_85=0
+            count_86_95=0
+            count_96_105=0
+            count_more_105=0
+            none=0
+        }
+        {
+            if ( (0 <= $3) && ( $3 <=5 ) )
+            {
+                count_0_5++ 
+            }
+
+            else if ( (6 <= $3) && ( $3 <=15 ) )
+            {
+                count_6_15++ 
+            }
+
+            else if ( (16 <= $3) && ( $3 <=25 ) )
+            {
+                count_16_25++ 
+            }
+
+            else if ( (26 <= $3) && ( $3 <=35 ) )
+            {
+               count_26_35++ 
+            }
+
+            else if ( (36 <= $3) && ( $3 <=45 ) )
+            {
+                count_36_45++ 
+            }
+
+            else if ( (46 <= $3) && ( $3 <=55 ) )
+            {
+                count_46_55++ 
+            }
+
+            else if ( (56 <= $3) && ( $3 <=65 ) )
+            {
+                count_56_65++ 
+            }
+
+            else if ( (66 <= $3) && ( $3 <=75 ) )
+            {
+                count_66_75++ 
+            }
+
+            else if ( (76 <= $3) && ( $3 <=85 ) )
+            {
+                count_76_85++ 
+            }
+
+            else if ( (86 <= $3) && ( $3 <=95 ) )
+            {
+                count_86_95++ 
+            }
+
+            else if ( (96 <= $3) && ( $3 <=105 ) )
+            {
+                count_96_105++ 
+            }
+
+            else if ( $3 > 105 )
+            {
+                count_more_105++ 
+            }
+            else none++
+            
+        }
+            END{    
+                printf ("0-5   : %d\n6-15  : %d\n16-25 : %d\n26-35 : %d\n", count_0_5, count_6_15, count_16_25, count_26_35)
+                printf ("36-45 : %d\n46-55 : %d\n56-65 : %d\n66-75 : %d\n", count_36_45, count_46_55, count_56_65, count_66_75)
+                printf ("76-85 : %d\n86-95 : %d\n96-105: %d\n>105  : %d\n", count_76_85, count_86_95, count_96_105, count_more_105)
+                if(none > 0)
+                {
+                    printf ("None  : %d\n",none)  
+                }
+            }'
+    }
+
+    #vypíše štatistiku nakazených osôb pre jednotlivé dni
+    daily_calc()
+    {
+        DAYS=$(echo  "$INPUT" | awk -F "," '{print $2}')
+        DAYS="$(echo "$DAYS" | tr -d ' ')"
+        DAYS=$(echo "$DAYS" | sort)   
+        echo "$DAYS" | sort | uniq -c | awk 'BEGIN{
+                daily_none=0
+                }
+                {
+                    if (length($2) != 0)
+                    {
+                        printf ("%s: %s\n",$2, $1)
+                    }
+                    else daily_none++
+                }
+                END{
+                    if(daily_none != 0)
+                    {
+                        printf ("None      : %d\n", daily_none)
+                    }  
+            }'
+    }
+
+    #vypíše štatistiku nakazených osôb pre jednotlivé mesiace
+    monthly_calc()
+    {
+        DAYS=$(echo  "$INPUT" | awk -F "," '{print $2}')
+        DAYS="$(echo "$DAYS" | tr -d ' ')"
+        MONTHS=$(echo  "$DAYS" | awk -F "-" '{print $1"-"$2}')
+        MONTHS=$(echo "$MONTHS" | sort)
+        echo "$MONTHS" | sort | uniq -c | awk 'BEGIN{
+                monthly_none=0
+                }
+                {
+                    if (length($2) > 1)
+                    {
+                        printf ("%s: %s\n",$2, $1)
+                    }
+                    if ($2 == "-")
+                    monthly_none++
+                }
+                END{
+                    if(daily_none != 0)
+                    {
+                        printf ("None   : %d\n", monthly_none)
+                    }
+            }'   
+    }
+    
+    #vypíše štatistiku nakazených osôb pre jednotlivé roky
+    yearly_calc()
+    {
+        DAYS=$(echo "$INPUT" | awk -F "," '{print $2}')
+        DAYS="$(echo "$DAYS" | tr -d ' ')"
+        YEARS=$(echo  "$DAYS" | awk -F "-" '{print $1}')
+        YEARS=$(echo "$YEARS" | sort)
+        echo "$YEARS" | sort | uniq -c | awk 'BEGIN{
+              yearly_none=0
+                }
+                {
+                    if (length($2) > 1)
+                    {
+                        printf ("%s: %s\n",$2, $1)
+                    }
+                    else yearly_none++   
+                }
+                END{
+                    if(yearly_none != 0)
+                    {
+                        printf ("None: %d\n", yearly_none)
+                    }
+            }'   
+    }
+
+    #vypíše štatistiku nakazených osôb pre jednotlivé krajiny
+    countries_calc()
+    {
+        COUNTRY=$(echo  "$INPUT" | awk -F "," '{print $8}')
+        COUNTRY="$(echo "$COUNTRY" | tr -d ' ')"
+        echo "$COUNTRY" | sort | uniq -c | awk '{
+                    if (length($2) >= 1)
+                    {
+                        if($2 != "CZ")
+                        {
+                            printf ("%s: %s\n",$2, $1)
+                        }
+                        
+                    }
+            }'   
+    }
+
+    #vypíše štatistiku nakazených osôb pre jednotlivé okresy
+    districts_calc()
+    {
+        DISTRICT=$(echo  "$INPUT" | awk -F "," '{print $6}')  
+        echo "$DISTRICT" | sort | uniq -c | awk '{
+                    if (length($2) >= 1)
+                    {
+                        printf ("%s: %s\n",$2, $1)
+                    }   
+            }'
+        echo "$DISTRICT" | awk '/^[[:space:]]*$/ {++x} END {if(x != 0) printf("None:   %d\n",x)}'      
+    }
+
+    #vypíše štatistiku nakazených osôb pre jednotlivé kraje
+    regions_calc()
+    {
+        REGION=$(echo  "$INPUT" | awk -F "," '{print $5}')
+        echo "$REGION" | sort | uniq -c | awk '{
+                    if (length($2) >= 1)
+                    {
+                        printf ("%s: %s\n",$2, $1)
+                    }   
+            }'
+        echo "$REGION" | awk '/^[[:space:]]*$/ {++x} END {if(x != 0) printf("None:  %d",x)}'     
+    }
+
+#nacitanie argumentov z prikazovej riadky
+while [ "$#" -gt 0 ] ; do
+    case "$1" in
+        infected | merge | gender | age | daily | monthly | yearly | countries | districts | regions)
+            COMMAND="$1"
+            shift
+            ;;
+        -a) 
+            #ošetrenie v prípade, že je filter -g zadaný dva krát
+            if ! [ -z $after_datetime ]
+            then
+                echo "You cannot use filter more than once" >&2
+                exit 1
+            fi
+
+            #ošetrenie formátu dátumu
+            after_datetime=$(echo "$2" | awk '$1 ~ "^([0-9][0-9][0-9][0-9])-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])"')
+            if [ -z $after_datetime ]
+            then
+                echo "Date does not match the format" >&2
+                exit 1
+            fi
+            shift
+            shift
+            ;;
+        -b)
+            #ošetrenie v prípade, že je filter -g zadaný dva krát
+            if ! [ -z $before_datetime  ]
+            then
+                echo "You cannot use filter more than once" >&2
+                exit 1
+            fi
+            #ošetrenie formátu dátumu
+            before_datetime=$(echo "$2" | awk '$1 ~ "^([0-9][0-9][0-9][0-9])-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])"')
+            if [ -z $before_datetime ]
+            then
+                echo "Date does not match the format" >&2
+                exit 1
+            fi
+            shift
+            shift
+            ;;
+        -g)
+            #ošetrenie v prípade, že je filter -g zadaný dva krát
+            if ! [ -z $gender_g ]
+            then
+                echo "You cannot use filter more than once" >&2
+                exit 1
+            fi
+            #ošetrenie v prípade, že je pohlavie M alebo Z
+            gender_g="$2"
+            if [ $gender_g = "M" ] || [ $gender_g = "Z" ];
+            then
+                shift
+                shift
+            else 
+                echo "Gender must be M or Z" >&2
+                exit 1
+            fi
+            ;;  
+        -s)
+            #ošetrenie v prípade, že je filter -s zadaný dva krát
+            if ! [ -z $width ]
+            then
+                echo "You cannot use filter more than once" >&2
+                exit 1
+            else
+                if expr "$2" : '[0-9][0-9]*$'>/dev/null;
+                then
+                    if [ $2 -gt "0" ]
+                    then
+                    width="$2"
+                    default=-1
+                    shift
+                    shift
+                    fi
+                else 
+                    width=-1
+                    default=1
+                    shift
+                fi
+            fi
+            ;;
+        *.csv.gz)
+            ziplogs="$ziplogs$(gzip -d -c "$1")\n"
+            shift
+            ;;
+        *.csv.bz2)
+            ziplogs="$ziplogs$(bzip2 -d -c "$1")\n"
+            shift
+            ;;
+        *.csv)
+            logs="$logs $(cat "$1")\n"
+            shift
+            ;;
+        -h)
+            help
+            exit 0
+            ;;
+        *)
+            echo "Argument has not been found. Please try again" >&2
+            echo "Type corona -h if you need help" >&2
+            exit 1
+      esac
+done
+
+#Spracovanie vstupných údajov + vyfiltrovanie vstupu - zmazanie prebytocnych riadkov 
+if [ -z "$ziplogs" ] && [ -z "$logs" ];
+then
+    INPUT=$(cat)
+    INPUT=$(echo "$INPUT" | sed '/id,datum,vek,pohlavi,kraj_nuts_kod,okres_lau_kod,nakaza_v_zahranici,nakaza_zeme_csu_kod,reportovano_khs/d')
+    INPUT=$(echo "$INPUT" | sed '/^[[:space:]]*$/d' )
+    INPUT=$(echo "$INPUT" | awk '{ gsub(/ /,""); print }')
+else 
+    INPUT=" $logs$ziplogs "
+    INPUT=$(echo "$INPUT" | sed '/id,datum,vek,pohlavi,kraj_nuts_kod,okres_lau_kod,nakaza_v_zahranici,nakaza_zeme_csu_kod,reportovano_khs/d')
+    INPUT=$(echo "$INPUT" | sed '/^[[:space:]]*$/d' )
+    INPUT=$(echo "$INPUT" | awk '{ gsub(/ /,""); print }')
+fi
+
+#Overenie validity dátumu
+INVALID_D=$(echo "$INPUT" | awk -F"," ' $2 !~ "^([0-9][0-9][0-9][0-9])-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])" {print $0}')
+INPUT=$(echo "$INPUT" | awk -F"," ' $2 ~ "^([0-9][0-9][0-9][0-9])-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])" {print $0}')
+
+#Overenie validity veku
+INVALID_A=$(echo "$INPUT" | awk -F"," '$3 !~  "^[0-9]+$" && $3 !~ /^ *$/  {print $0}')
+INPUT=$(echo "$INPUT" | awk -F"," '$3 ~  "^[0-9]+$" || $3 ~ /^ *$/  {print $0}')
+
+#Filter pre datumy po zadanom datume
+if ! [ -z $after_datetime ]
+then
+    INPUT=$(echo "$INPUT" | awk -F"," -v after_date="$after_datetime" '{if($2 >= after_date) {print $0}}')
+fi
+
+#Filter pre datumy pred zadanym datumom
+if ! [ -z $before_datetime ]
+then
+    INPUT=$(echo "$INPUT" | awk -F"," -v before_date="$before_datetime" '{if($2 <= before_date) {print $0}}')
+fi
+
+#overenie, či dátum pri filti -a je väčší ako pri filtri -b 
+if ! [ -z $before_datetime ] && ! [ -z $after_datetime ]
+then
+    after=$(echo "$after_datetime" | awk -F"-" '{printf($1$2$3)}')
+    before=$(echo "$before_datetime" | awk -F"-" '{printf($1$2$3)}')
+    if [ "$after" -gt "$before" ]
+    then
+        echo "id,datum,vek,pohlavi,kraj_nuts_kod,okres_lau_kod,nakaza_v_zahranici,nakaza_zeme_csu_kod,reportovano_khs"
+        echo "Date that was inserted with argument -b must be greater than date inserted with -a"
+        exit 1
+    fi
+fi
+
+#Filter pre zobrazenie udajov iba daneho pohlavia
+if ! [ -z $gender_g ]
+then
+    INPUT=$(echo "$INPUT" | awk -F"," -v gender_main="$gender_g" '{if($4 == gender_main) {print $0}}')
+fi
+
+if [ -z "$COMMAND" ]
+then
+    if [ -z $after_datetime ] || [ -z $before_datetime ] || [ -z $gender_g ]
+    then
+        echo "id,datum,vek,pohlavi,kraj_nuts_kod,okres_lau_kod,nakaza_v_zahranici,nakaza_zeme_csu_kod,reportovano_khs"
+    fi
+    echo "$INPUT"
+fi
+
+#v prípade, že je zadaný argument infected tak program spočíta počet nakazených
+if [ "$COMMAND" = "infected" ]
+then
+    if [ -z $width ]
+    then
+        infected_calc
+    fi 
+fi
+
+#v prípade, že je zadaný argument merge tak program zlúči niekolko súborov, pricom sa zachova povodne poradie
+if [ "$COMMAND" = "merge" ]
+then
+    if [ -z $width ]
+    then
+        merge
+    fi  
+fi
+
+#v prípade, že je zadaný argument gender tak program spočíta počet nakazených pre dané pohlavia
+if [ "$COMMAND" = "gender" ]
+then
+    if [ -z $width ]
+    then
+        gender_calc
+    elif [ $width = -1 ]
+    then
+        width=100000
+        OUTPUT=$( gender_calc )
+
+    else OUTPUT=$( gender_calc )
+    fi 
+fi
+
+#v prípade, že je zadaný argument age, vypíše program štatistiku nakazených osob podla veku
+if [ "$COMMAND" = "age" ]
+then
+    if [ -z $width ]
+    then
+        age_calc 
+    elif [ $width = -1 ]
+    then
+        width=10000
+        OUTPUT=$( age_calc  )
+
+    else OUTPUT=$( age_calc  )
+    fi   
+fi
+
+#v prípade, že je zadaný argument daily, vypíše program štatistiku pre jednotlive dni
+if [ "$COMMAND" = "daily" ]
+then
+    if [ -z $width ]
+    then
+        daily_calc
+    elif [ $width = -1 ]
+    then 
+        width=500
+        OUTPUT=$( daily_calc )
+
+    else OUTPUT=$( daily_calc )
+    fi     
+fi
+
+#v prípade, že je zadaný argument monthly, vypíše program štatistiku pre jednotlive mesiace
+if [ "$COMMAND" = "monthly" ]
+then
+    if [ -z $width ]
+    then
+        monthly_calc
+    elif [ $width = -1 ]
+    then
+        width=10000
+        OUTPUT=$( monthly_calc ) 
+
+    else OUTPUT=$( monthly_calc ) 
+    fi 
+fi
+
+#v prípade, že je zadaný argument yearly, vypíše program štatistiku pre jednotlive roky
+if [ "$COMMAND" = "yearly" ]
+then
+    if [ -z $width ]
+    then
+        yearly_calc
+    elif [ $width = -1 ]
+    then
+        width=100000
+        OUTPUT=$( yearly_calc ) 
+
+    else OUTPUT=$( yearly_calc ) 
+    fi    
+fi
+
+#v prípade, že je zadaný argument countries, vypíše program štatistiku pre jednotlivé štáty (okrem ČR)
+if [ "$COMMAND" = "countries" ]
+then
+    if [ -z $width ]
+    then
+        countries_calc
+    elif [ $width = -1 ]
+    then
+        width=100
+        OUTPUT=$( countries_calc )
+         
+    else OUTPUT=$( countries_calc )
+    fi
+fi
+
+#v prípade, že je zadaný argument districts, vypíše program štatistiku pre jednotlivé okresy
+if [ "$COMMAND" = "districts" ]
+then
+    if [ -z $width ]
+    then
+        districts_calc
+    elif [ $width = -1 ]
+    then
+        width=1000 
+        OUTPUT=$( districts_calc )
+
+    else OUTPUT=$( districts_calc )
+    fi  
+fi
+
+#v prípade, že je zadaný argument regions, vypíše program štatistiku pre jednotlivé kraje
+if [ "$COMMAND" = "regions" ]
+then
+    if [ -z $width ]
+    then
+        regions_calc
+    elif [ $width = -1 ]
+    then
+        width=10000
+        OUTPUT=$( regions_calc )
+  
+    else OUTPUT=$( regions_calc )
+    fi    
+fi
+
+#Filter pre zobrazenie udajov ako grafov
+if ! [ -z $width ]
+then
+    case "$COMMAND" in
+        gender | age | daily | monthly | yearly | countries | districts | regions)
+        if [ $default -eq 1 ]
+        then
+            echo "$OUTPUT"| awk -F ":" -v width_ext="$width" '{
+                printf("%s: ",$1 )
+                temp=int(($2)/(width_ext))
+                for(i=0; i < temp;i++)
+                {
+                    printf("#")
+                }
+                printf("\n")
+            }'
+        else
+            MAX_NUMB=$(echo "$OUTPUT"| awk -F ":" 'BEGIN {max = 0} {if ($2+0>max) max=$2} END {print max}')
+
+            echo "$OUTPUT"| awk -F ":" -v width_ext="$width" -v max_ext="$MAX_NUMB" '{
+                new_width=int((($2)*(width_ext))/(max_ext))
+                printf("%s: ",$1 )
+                for(i=0; i < new_width; i++)
+                {
+                    printf("#")
+                }
+                printf("\n")
+            }'
+        fi
+        ;;
+        *)  echo "Filter -s can only be used with these commands: " >&2
+            echo "gender, age, daily, monthly, yearly, countries, districts, regions" >&2
+            exit 1
+    esac
+  
+fi
+
+if ! [ -z "$INVALID_D" ]
+then
+    echo "Invalid date: $INVALID_D" >&2
+fi
+
+if ! [ -z "$INVALID_A" ]
+then
+    echo "Invalid age: $INVALID_A" >&2
+fi
+
+exit 0
