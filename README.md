@@ -4,7 +4,7 @@
 Evaluation: 11/15 points
 
 ## Assignment
-#### [Assignment link](https://github.com/kezniklm/IOS_project1/blob/master/Assignment.pdf)
+#### [Assignment link](https://github.com/kezniklm/IOS_project1/blob/main/Assignment.pdf)
 ## Description
 The goal of this task is to create a shell script for analyzing records of individuals with confirmed COVID-19 infection in the Czech Republic. The script will filter the records and provide basic statistics based on user input.
 
